@@ -1,0 +1,54 @@
+# Load the packages
+library("readr")
+library("dplyr")
+library("ggplot2")
+library("tidyr")
+
+# Import the data
+survey <- read_csv("~/Desktop/Data/survey_data.csv" )
+head(survey)
+# Get an overview of the data
+summary(survey)
+
+# Examine the counts of the department variable
+survey %>%  count(department)
+
+# Output the average engagement score for each department, sorted
+survey %>%
+  group_by(department) %>%
+  summarize(avg_engagement = mean(engagement)) %>%
+  arrange(avg_engagement)
+
+# Creating the disengaged variable
+survey_disengaged <- survey %>% 
+  mutate(disengaged = ifelse(engagement <= 2, 1, 0)) 
+
+survey_disengaged
+
+# Summarize the three variables by department
+survey_summary <-  survey_disengaged %>%
+  group_by(department) %>%
+  summarize(pct_disengaged = mean(disengaged) ,
+            avg_salary = mean(salary),
+            avg_vacation_taken = mean(vacation_days_taken))
+survey_summary
+
+# Gather data for plotting
+survey_gathered <- survey_summary %>% 
+  gather(key = "measure", value = "value",
+         pct_disengaged, avg_salary, avg_vacation_taken)
+
+# Create three bar charts
+ggplot(survey_gathered, aes(x=measure,y = value, fill = department)) +
+  geom_col(position="dodge") +
+  facet_wrap(~ measure, scales ="free")
+
+# Add the in_sales variable
+survey_sales <- survey_disengaged %>%
+  mutate(in_sales = ifelse(department == "Sales", "Sales", "Other"))
+
+# Test the hypothesis using survey_sales
+chisq.test(survey_sales$in_sales, survey_sales$disengaged)
+
+# Test the hypothesis using the survey_sales data
+t.test(vacation_days_taken ~ in_sales, data = survey_sales)
